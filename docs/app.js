@@ -400,10 +400,18 @@ async function translate(text, fromLang, toLang) {
         max_tokens: 500,
       }),
     });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      const msg = err?.error?.message || resp.statusText;
+      setStatus(`⚠ OpenAI ${resp.status}: ${msg.slice(0, 60)}`);
+      console.error('Translate error:', resp.status, err);
+      return '';
+    }
     const data = await resp.json();
     return data?.choices?.[0]?.message?.content?.trim() || '';
   } catch (e) {
     console.error('Translate error:', e);
+    setStatus('⚠ Translate network error');
     return '';
   }
 }
