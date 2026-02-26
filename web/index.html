@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>Video Chat Translator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal">
+    <div class="modal-box">
+      <h2>Setup</h2>
+      <p class="subtitle">Keys are saved on this device only. Never shared.</p>
+
+      <label>Deepgram API Key</label>
+      <input type="password" id="deepgram-key" placeholder="4bd3d...">
+
+      <label>OpenAI API Key</label>
+      <input type="password" id="openai-key" placeholder="sk-proj-...">
+
+      <label>ElevenLabs API Key</label>
+      <input type="password" id="elevenlabs-key" placeholder="sk_...">
+
+      <label>I speak</label>
+      <select id="my-language">
+        <option value="en">English</option>
+        <option value="es">Spanish</option>
+      </select>
+
+      <button id="save-settings-btn" class="btn-primary">Save & Continue</button>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="hidden">
+
+    <!-- Videos -->
+    <div id="video-wrap">
+      <video id="remote-video" autoplay playsinline muted></video>
+      <video id="local-video" autoplay playsinline muted></video>
+    </div>
+
+    <!-- Translation overlay -->
+    <div id="overlay">
+      <div id="heard-box">
+        <span class="label">Heard</span>
+        <span id="heard-text"></span>
+      </div>
+      <div id="translated-box">
+        <span class="label">Translation</span>
+        <span id="translated-text"></span>
+      </div>
+    </div>
+
+    <!-- Bottom controls -->
+    <div id="controls">
+      <div id="status-bar">
+        <span id="status-text">Ready</span>
+      </div>
+
+      <!-- Step 1: Start -->
+      <div id="panel-start">
+        <button id="start-btn" class="btn-primary btn-large">Start Call</button>
+      </div>
+
+      <!-- Step 2: Share your ID / enter theirs -->
+      <div id="panel-share" class="hidden">
+        <div id="my-id-row">
+          <span id="my-id-label">Your ID: </span>
+          <strong id="my-id-text"></strong>
+        </div>
+        <button id="share-btn" class="btn-secondary">📤 Share Link</button>
+        <div class="divider">— or connect to them —</div>
+        <input type="text" id="their-id-input" placeholder="Paste their ID or link">
+        <button id="connect-btn" class="btn-primary">Connect</button>
+      </div>
+
+      <!-- Step 3: In call -->
+      <div id="panel-call" class="hidden">
+        <button id="end-btn" class="btn-danger">End Call</button>
+      </div>
+    </div>
+
+    <!-- Settings gear -->
+    <button id="settings-gear" title="Settings">⚙️</button>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
