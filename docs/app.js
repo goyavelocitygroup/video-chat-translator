@@ -27,9 +27,12 @@ function configComplete(cfg) {
 
 // ── Voices ───────────────────────────────────────────────────────────────────
 
+// Voices are keyed by the LISTENER's language, but represent the SPEAKER's gender.
+// Jeffrey (male) speaks → she hears → male Spanish voice (Chris in Spanish)
+// She (female) speaks → he hears → female English voice (Jessica in English)
 const VOICES = {
-  en: 'iP95p4xoKVk53GoZ742B', // Chris — american male 30s
-  es: 'cgSgspJ2msm6clMCkdW9', // Jessica — american female 20s (multilingual)
+  en: 'cgSgspJ2msm6clMCkdW9', // Jessica — female English (represents her voice)
+  es: 'iP95p4xoKVk53GoZ742B', // Chris — male Spanish (represents Jeffrey's voice)
 };
 
 const MODELS = {
@@ -293,11 +296,25 @@ function startTranslation(remoteStream) {
     }
   };
 
-  // Process every 3 seconds
+  const CHUNK_MS = 2000; // 2s chunks — shorter = less lag
+
+  function restartRecording() {
+    if (!mediaRecorder || !activeCall) return;
+    mediaRecorder.start();
+    setTimeout(() => { if (mediaRecorder?.state === 'recording') mediaRecorder.stop(); }, CHUNK_MS);
+  }
+
+  // Process every 2 seconds — start next recording immediately so capture
+  // overlaps with API calls instead of waiting for them to finish
   mediaRecorder.onstop = async () => {
-    if (audioChunks.length === 0 || translating) return;
-    const blob = new Blob(audioChunks, { type: mimeType });
+    const capturedChunks = [...audioChunks];
     audioChunks = [];
+
+    // Start next recording right away — don't wait for processing
+    restartRecording();
+
+    if (capturedChunks.length === 0 || translating) return;
+    const blob = new Blob(capturedChunks, { type: mimeType });
     translating = true;
 
     try {
@@ -305,18 +322,11 @@ function startTranslation(remoteStream) {
     } finally {
       translating = false;
     }
-
-    // Restart recording if still in call
-    if (mediaRecorder && activeCall) {
-      mediaRecorder.start();
-      setTimeout(() => { if (mediaRecorder?.state === 'recording') mediaRecorder.stop(); }, 3000);
-    }
   };
 
   // Start the recording loop
   audioChunks = [];
-  mediaRecorder.start();
-  setTimeout(() => { if (mediaRecorder?.state === 'recording') mediaRecorder.stop(); }, 3000);
+  restartRecording();
 }
 
 function stopTranslation() {
