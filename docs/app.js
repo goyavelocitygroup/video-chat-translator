@@ -45,6 +45,7 @@ let localStream = null;
 let mediaRecorder = null;
 let audioChunks = [];
 let translating = false;
+let audioCtx = null;  // AudioContext — unlocked on first user gesture for iOS
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 
@@ -64,25 +65,24 @@ const panelShare    = $('panel-share');
 const panelCall     = $('panel-call');
 const myIdText      = $('my-id-text');
 const theirIdInput  = $('their-id-input');
+const langBtn       = $('lang-btn');
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
   cfg = loadConfig();
 
-  // Read URL params
-  const params = new URLSearchParams(window.location.search);
+  // Default language if not set
+  if (!cfg.myLanguage) cfg.myLanguage = 'en';
 
-  // ?lang=es → Spanish speaker (her), no param → English speaker (you)
+  // Also check URL ?lang= as a convenience (e.g. shared link)
+  const params = new URLSearchParams(window.location.search);
   const langParam = params.get('lang');
-  if (langParam === 'es' || langParam === 'en') {
-    cfg.myLanguage = langParam;
-  } else if (!cfg.myLanguage) {
-    cfg.myLanguage = 'en';
-  }
+  if (langParam === 'es' || langParam === 'en') cfg.myLanguage = langParam;
 
   // Always go straight to app — keys are pre-loaded
   showApp();
+  updateLangBtn();
 
   // Pre-fill settings form
   if (cfg.deepgramKey)   $('deepgram-key').value   = cfg.deepgramKey;
@@ -93,6 +93,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Check if URL has a peer ID to auto-connect
   const roomId = params.get('room');
   if (roomId) theirIdInput.value = roomId;
+});
+
+// ── Language Toggle ───────────────────────────────────────────────────────────
+
+function updateLangBtn() {
+  langBtn.textContent = cfg.myLanguage === 'es'
+    ? 'I speak: Spanish 🇨🇴'
+    : 'I speak: English 🇺🇸';
+}
+
+langBtn.addEventListener('click', () => {
+  cfg.myLanguage = cfg.myLanguage === 'en' ? 'es' : 'en';
+  updateLangBtn();
+  $('my-language').value = cfg.myLanguage;
 });
 
 // ── Settings ─────────────────────────────────────────────────────────────────
@@ -120,6 +134,7 @@ $('save-settings-btn').addEventListener('click', () => {
   }
   cfg = newCfg;
   saveConfig(cfg);
+  updateLangBtn();
   showApp();
 });
 
@@ -128,6 +143,12 @@ $('settings-gear').addEventListener('click', showSettings);
 // ── Start Call ────────────────────────────────────────────────────────────────
 
 $('start-btn').addEventListener('click', async () => {
+  // Unlock audio on iOS — must happen inside user gesture handler
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+  } catch(e) { console.warn('AudioContext init failed:', e); }
+
   setStatus('Getting camera & mic...');
 
   try {
@@ -167,7 +188,7 @@ $('start-btn').addEventListener('click', async () => {
 
 $('share-btn').addEventListener('click', () => {
   const id = myIdText.textContent;
-  // Add lang=es so her device auto-sets Spanish when she opens the link
+  // Share with ?lang=es so the other person (Spanish speaker) auto-sets their language
   const url = `${location.origin}${location.pathname}?room=${id}&lang=es`;
 
   if (navigator.share) {
@@ -206,7 +227,7 @@ function handleCall(call) {
   activeCall = call;
 
   call.on('stream', remoteStream => {
-    // Show remote video (audio muted — we'll play translated version instead)
+    // Show remote video (audio muted — we play translated version instead)
     remoteVideo.srcObject = remoteStream;
 
     panelShare.classList.add('hidden');
@@ -315,14 +336,15 @@ async function processChunk(audioBlob, theirLang, myLang) {
 
   // 2. Translate with OpenAI
   const translation = await translate(transcript, theirLang, myLang);
-  if (!translation) { setStatus('Connected ✓'); return; }
+  if (!translation) { setStatus('⚠ Translation failed'); return; }
 
   showTranslated(translation);
   setStatus('Speaking...');
 
   // 3. Synthesize with ElevenLabs and play
   const audioUrl = await synthesize(translation, myLang);
-  if (audioUrl) await playAudio(audioUrl);
+  if (!audioUrl) { setStatus('⚠ Audio failed'); return; }
+  await playAudio(audioUrl);
 
   setStatus('Connected ✓');
 }
@@ -404,6 +426,12 @@ async function synthesize(text, language) {
         output_format: 'mp3_44100_128',
       }),
     });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error('ElevenLabs error:', resp.status, errText);
+      setStatus('⚠ Audio error ' + resp.status);
+      return null;
+    }
     const blob = await resp.blob();
     return URL.createObjectURL(blob);
   } catch (e) {
@@ -412,7 +440,30 @@ async function synthesize(text, language) {
   }
 }
 
-function playAudio(url) {
+// ── Audio Playback (AudioContext for iOS compatibility) ───────────────────────
+
+async function playAudio(url) {
+  if (audioCtx) {
+    try {
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      const resp = await fetch(url);
+      const arrayBuffer = await resp.arrayBuffer();
+      const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+      URL.revokeObjectURL(url);
+      return new Promise(resolve => {
+        const src = audioCtx.createBufferSource();
+        src.buffer = decoded;
+        src.connect(audioCtx.destination);
+        src.onended = resolve;
+        src.start(0);
+      });
+    } catch(e) {
+      console.error('AudioContext playback error:', e);
+      URL.revokeObjectURL(url);
+      return;
+    }
+  }
+  // Fallback (non-iOS)
   return new Promise(resolve => {
     const audio = new Audio(url);
     audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
