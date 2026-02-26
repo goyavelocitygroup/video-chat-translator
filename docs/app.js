@@ -70,6 +70,17 @@ const theirIdInput  = $('their-id-input');
 document.addEventListener('DOMContentLoaded', () => {
   cfg = loadConfig();
 
+  // Read URL params
+  const params = new URLSearchParams(window.location.search);
+
+  // ?lang=es → Spanish speaker (her), no param → English speaker (you)
+  const langParam = params.get('lang');
+  if (langParam === 'es' || langParam === 'en') {
+    cfg.myLanguage = langParam;
+  } else if (!cfg.myLanguage) {
+    cfg.myLanguage = 'en';
+  }
+
   // Always go straight to app — keys are pre-loaded
   showApp();
 
@@ -77,10 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (cfg.deepgramKey)   $('deepgram-key').value   = cfg.deepgramKey;
   if (cfg.openaiKey)     $('openai-key').value      = cfg.openaiKey;
   if (cfg.elevenlabsKey) $('elevenlabs-key').value  = cfg.elevenlabsKey;
-  if (cfg.myLanguage)    $('my-language').value     = cfg.myLanguage;
+  $('my-language').value = cfg.myLanguage;
 
   // Check if URL has a peer ID to auto-connect
-  const params = new URLSearchParams(window.location.search);
   const roomId = params.get('room');
   if (roomId) theirIdInput.value = roomId;
 });
@@ -157,7 +167,8 @@ $('start-btn').addEventListener('click', async () => {
 
 $('share-btn').addEventListener('click', () => {
   const id = myIdText.textContent;
-  const url = `${location.origin}${location.pathname}?room=${id}`;
+  // Add lang=es so her device auto-sets Spanish when she opens the link
+  const url = `${location.origin}${location.pathname}?room=${id}&lang=es`;
 
   if (navigator.share) {
     navigator.share({ title: 'Video Chat Translator', text: 'Join my call', url });
