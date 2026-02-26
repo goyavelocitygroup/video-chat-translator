@@ -259,8 +259,24 @@ function connectToRoom() {
   const theirLang = cfg.myLanguage === 'en' ? 'es' : 'en';
   const theirPeerId = `vct-${roomCode}-${theirLang}`;
   setStatus('Calling partner...');
+
   const outCall = peer.call(theirPeerId, localStream);
-  if (outCall) handleCall(outCall);
+  if (!outCall) return;
+
+  // Don't set activeCall here — wait until stream arrives so that
+  // the peer-unavailable error handler can still see !activeCall and retry
+  outCall.on('stream', remoteStream => {
+    if (activeCall) { outCall.close(); return; } // incoming call won the race
+    activeCall = outCall;
+    remoteVideo.srcObject = remoteStream;
+    panelRoom.classList.add('hidden');
+    panelCall.classList.remove('hidden');
+    setStatus('Connected ✓');
+    startTranslation(remoteStream);
+  });
+
+  outCall.on('close', () => { if (activeCall === outCall) endCall(); });
+  outCall.on('error', () => { if (activeCall === outCall) endCall(); });
 }
 
 $('cancel-room-btn').addEventListener('click', endCall);
