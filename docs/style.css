@@ -1,0 +1,230 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #000;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ── Modal ── */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.modal-box {
+  background: #1c1c1e;
+  border-radius: 20px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-box h2 { font-size: 22px; margin-bottom: 2px; }
+.modal-box .subtitle { color: #888; font-size: 13px; margin-bottom: 6px; }
+.modal-box label { color: #aaa; font-size: 13px; margin-top: 4px; }
+
+.modal-box input,
+.modal-box select {
+  width: 100%;
+  padding: 12px 14px;
+  background: #2c2c2e;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+/* ── Main App ── */
+#app {
+  position: relative;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+#video-wrap {
+  position: relative;
+  flex: 1;
+  background: #111;
+  overflow: hidden;
+}
+
+#remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#local-video {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 100px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 2px solid #333;
+  background: #222;
+}
+
+/* ── Translation overlay ── */
+#overlay {
+  position: absolute;
+  bottom: 220px;
+  left: 0;
+  right: 0;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+#heard-box, #translated-box {
+  background: rgba(0,0,0,0.65);
+  border-radius: 12px;
+  padding: 10px 14px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#heard-box { display: none; }
+#translated-box { display: none; }
+
+.label {
+  display: block;
+  font-size: 11px;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+#heard-text { font-size: 15px; color: #ddd; }
+#translated-text { font-size: 16px; color: #00d4aa; font-weight: 500; }
+
+/* ── Controls ── */
+#controls {
+  background: #1c1c1e;
+  padding: 16px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 180px;
+}
+
+#status-bar {
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+}
+
+#panel-share {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#my-id-row {
+  text-align: center;
+  font-size: 14px;
+  color: #aaa;
+}
+
+#my-id-text { color: #fff; letter-spacing: 1px; }
+
+#their-id-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #2c2c2e;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.divider {
+  text-align: center;
+  color: #555;
+  font-size: 12px;
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  background: #0a84ff;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-secondary {
+  background: #2c2c2e;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: #ff3b30;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+}
+
+.btn-large { padding: 18px; font-size: 18px; }
+
+#panel-call {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Settings gear ── */
+#settings-gear {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  cursor: pointer;
+  color: #fff;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.hidden { display: none !important; }
