@@ -50,6 +50,7 @@ let mediaRecorder = null;
 let audioChunks = [];
 let translating = false;
 let audioCtx = null;  // AudioContext — unlocked on first user gesture for iOS
+let roomCode = null;  // set from ?code= URL param for bookmark-based auto-connect
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ const translatedText= $('translated-text');
 const statusText    = $('status-text');
 const panelStart    = $('panel-start');
 const panelShare    = $('panel-share');
+const panelRoom     = $('panel-room');
 const panelCall     = $('panel-call');
 const myIdText      = $('my-id-text');
 const theirIdInput  = $('their-id-input');
@@ -79,10 +81,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Default language if not set
   if (!cfg.myLanguage) cfg.myLanguage = 'en';
 
-  // Also check URL ?lang= as a convenience (e.g. shared link)
+  // Read URL params
   const params = new URLSearchParams(window.location.search);
+
+  // ?lang= overrides language (e.g. from a shared link)
   const langParam = params.get('lang');
   if (langParam === 'es' || langParam === 'en') cfg.myLanguage = langParam;
+
+  // ?code= sets the shared room code for bookmark-based auto-connect
+  roomCode = params.get('code') || null;
 
   // Show settings if OpenAI key hasn't been entered yet (it's not baked in)
   if (!cfg.openaiKey) {
@@ -98,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (cfg.elevenlabsKey) $('elevenlabs-key').value  = cfg.elevenlabsKey;
   $('my-language').value = cfg.myLanguage;
 
-  // Check if URL has a peer ID to auto-connect
+  // Old-style share link: ?room=PEERID fills the connect input
   const roomId = params.get('room');
   if (roomId) theirIdInput.value = roomId;
 });
@@ -169,17 +176,25 @@ $('start-btn').addEventListener('click', async () => {
 
   setStatus('Connecting...');
 
-  peer = new Peer({ debug: 0 });
+  // Use a fixed peer ID derived from room code so bookmarks always reconnect
+  const myPeerId = roomCode ? `vct-${roomCode}-${cfg.myLanguage}` : undefined;
+  peer = new Peer(myPeerId, { debug: 0 });
 
   peer.on('open', id => {
-    myIdText.textContent = id;
     panelStart.classList.add('hidden');
-    panelShare.classList.remove('hidden');
-    setStatus('Share your link or enter theirs');
 
-    // Auto-connect if URL had a room param
-    const savedId = theirIdInput.value.trim();
-    if (savedId) callPeer(extractId(savedId));
+    if (roomCode) {
+      // Room mode: auto-connect, no sharing needed
+      panelRoom.classList.remove('hidden');
+      connectToRoom();
+    } else {
+      // Manual mode: show share panel
+      myIdText.textContent = id;
+      panelShare.classList.remove('hidden');
+      setStatus('Share your link or enter theirs');
+      const savedId = theirIdInput.value.trim();
+      if (savedId) callPeer(extractId(savedId));
+    }
   });
 
   peer.on('call', incomingCall => {
@@ -188,7 +203,17 @@ $('start-btn').addEventListener('click', async () => {
   });
 
   peer.on('error', err => {
-    setStatus('Connection error: ' + err.type);
+    if (err.type === 'peer-unavailable' && roomCode && !activeCall) {
+      // Partner not online yet — retry every 5 seconds
+      setStatus('Waiting for partner...');
+      setTimeout(() => { if (peer && !activeCall) connectToRoom(); }, 5000);
+    } else if (err.type === 'unavailable-id') {
+      // Fixed ID temporarily taken (e.g. reconnecting too fast) — reload clears it
+      setStatus('Reconnecting...');
+      setTimeout(() => location.reload(), 3000);
+    } else {
+      setStatus('Connection error: ' + err.type);
+    }
   });
 });
 
@@ -229,20 +254,31 @@ function callPeer(theirId) {
   handleCall(outCall);
 }
 
+function connectToRoom() {
+  if (!peer || !localStream || activeCall) return;
+  const theirLang = cfg.myLanguage === 'en' ? 'es' : 'en';
+  const theirPeerId = `vct-${roomCode}-${theirLang}`;
+  setStatus('Calling partner...');
+  const outCall = peer.call(theirPeerId, localStream);
+  if (outCall) handleCall(outCall);
+}
+
+$('cancel-room-btn').addEventListener('click', endCall);
+
 // ── Handle Call ───────────────────────────────────────────────────────────────
 
 function handleCall(call) {
+  if (activeCall) { call.close(); return; } // already in a call
   activeCall = call;
 
   call.on('stream', remoteStream => {
-    // Show remote video (audio muted — we play translated version instead)
     remoteVideo.srcObject = remoteStream;
 
     panelShare.classList.add('hidden');
+    panelRoom.classList.add('hidden');
     panelCall.classList.remove('hidden');
     setStatus('Connected ✓');
 
-    // Start translation of their audio
     startTranslation(remoteStream);
   });
 
@@ -267,6 +303,7 @@ function endCall() {
 
   panelCall.classList.add('hidden');
   panelShare.classList.add('hidden');
+  panelRoom.classList.add('hidden');
   panelStart.classList.remove('hidden');
   setStatus('Call ended');
 }
