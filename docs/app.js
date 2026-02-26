@@ -2,10 +2,11 @@
 
 const CFG_KEY = 'vct_config';
 
-// Default keys — baked in so she just opens the link and it works
+// Deepgram + ElevenLabs baked in for convenience.
+// OpenAI key is NOT stored here — GitHub auto-revokes sk-proj-* keys found in public repos.
+// Users enter it once via ⚙️ Settings; it saves to localStorage on each device.
 const DEFAULTS = {
   deepgramKey:   '4bd3d23b01614a946f4b370007a9fe975111e067',
-  openaiKey:     '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',
   elevenlabsKey: 'sk_82d13744f6ebc797fbbb60dbb30b0d9b9ee96803d03dacb4',
 };
 
@@ -80,8 +81,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const langParam = params.get('lang');
   if (langParam === 'es' || langParam === 'en') cfg.myLanguage = langParam;
 
-  // Always go straight to app — keys are pre-loaded
-  showApp();
+  // Show settings if OpenAI key hasn't been entered yet (it's not baked in)
+  if (!cfg.openaiKey) {
+    showSettings();
+  } else {
+    showApp();
+  }
   updateLangBtn();
 
   // Pre-fill settings form
