@@ -2,8 +2,18 @@
 
 const CFG_KEY = 'vct_config';
 
+// Default keys — baked in so she just opens the link and it works
+const DEFAULTS = {
+  deepgramKey:   '4bd3d23b01614a946f4b370007a9fe975111e067',
+  openaiKey:     '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',
+  elevenlabsKey: 'sk_82d13744f6ebc797fbbb60dbb30b0d9b9ee96803d03dacb4',
+};
+
 function loadConfig() {
-  try { return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; } catch { return {}; }
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY)) || {};
+    return { ...DEFAULTS, ...saved };
+  } catch { return { ...DEFAULTS }; }
 }
 
 function saveConfig(cfg) {
@@ -60,11 +70,8 @@ const theirIdInput  = $('their-id-input');
 document.addEventListener('DOMContentLoaded', () => {
   cfg = loadConfig();
 
-  if (configComplete(cfg)) {
-    showApp();
-  } else {
-    showSettings();
-  }
+  // Always go straight to app — keys are pre-loaded
+  showApp();
 
   // Pre-fill settings form
   if (cfg.deepgramKey)   $('deepgram-key').value   = cfg.deepgramKey;
