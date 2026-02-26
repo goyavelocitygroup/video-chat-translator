@@ -256,8 +256,15 @@ function callPeer(theirId) {
 
 function connectToRoom() {
   if (!peer || !localStream || activeCall) return;
-  const theirLang = cfg.myLanguage === 'en' ? 'es' : 'en';
-  const theirPeerId = `vct-${roomCode}-${theirLang}`;
+
+  // Only the English speaker initiates — avoids both sides calling each other
+  // simultaneously (WebRTC glare). Spanish speaker just waits for the call.
+  if (cfg.myLanguage !== 'en') {
+    setStatus('Waiting for partner...');
+    return;
+  }
+
+  const theirPeerId = `vct-${roomCode}-es`;
   setStatus('Calling partner...');
 
   const outCall = peer.call(theirPeerId, localStream);
@@ -266,7 +273,7 @@ function connectToRoom() {
   // Don't set activeCall here — wait until stream arrives so that
   // the peer-unavailable error handler can still see !activeCall and retry
   outCall.on('stream', remoteStream => {
-    if (activeCall) { outCall.close(); return; } // incoming call won the race
+    if (activeCall) { outCall.close(); return; }
     activeCall = outCall;
     remoteVideo.srcObject = remoteStream;
     panelRoom.classList.add('hidden');
